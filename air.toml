@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+build_dir = "tmp/bin"
+bin = "./cmd/web" # Update the bin field to the desired command
+
+exclude_dir = ["tmp", "vendor"]
+
+[build]
+cmd = "go run ./cmd/web" # Update the build command
+watch_ext = ["go", "tpl", "tmpl", "html"]
+
+[[reload]]
+extensions = ["go", "tpl", "tmpl", "html"]
+go_mod = true
+go_sum = true
+depth = 1
