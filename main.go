@@ -7,18 +7,35 @@ import (
 
 // Define a home handler function which writes a byte slice containing
 // "Hello from Snippetbox" as the response body.
-func home(w http.ResponseWriter, r *http.Request) {
+func home(w http.ResponseWriter, _ *http.Request) {
 	_, err := w.Write([]byte("Hello from Snippetbox"))
 	if err != nil {
 		return
 	}
 }
 
+// Add a snippetView handler function.
+func snippetView(w http.ResponseWriter, _ *http.Request) {
+	_, err := w.Write([]byte("Display a specific snippet..."))
+	if err != nil {
+		return
+	}
+}
+
+// Add a snippetCreate handler function.
+func snippetCreate(w http.ResponseWriter, _ *http.Request) {
+	_, err := w.Write([]byte("Create a new snippet..."))
+	if err != nil {
+		return
+	}
+}
 func main() {
 	// Use the http.NewServeMux() function to initialize a new servemux, then
 	// register the home function as the handler for the "/" URL pattern.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", home)
+	mux.HandleFunc("/snippet/view", snippetView)
+	mux.HandleFunc("/snippet/create", snippetCreate)
 
 	// Use the http.ListenAndServe() function to start a new web server. We pass in
 	// two parameters: the TCP network address to listen on (in this case ":4000")
