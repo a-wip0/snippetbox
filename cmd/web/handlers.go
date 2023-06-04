@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
+	"snippetbox/internal/models"
 	"strconv"
 )
 
@@ -63,9 +65,22 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w) // Use the notFound() helper.
 		return
 	}
-	// Use the fmt.Fprintf() function to interpolate the id value with our response
-	// and write it to the http.ResponseWriter.
-	_, err = fmt.Fprintf(w, "Display a specific snippet with ID %d...", id)
+
+	// Use the SnippetModel object's Get method to retrieve the data for a
+	// specific record based on its ID. If no matching record is found,
+	// return a 404 Not Found response.
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+
+	// Write the snippet data as a plain-text HTTP response body.
+	_, err = fmt.Fprintf(w, "%+v", snippet)
 	if err != nil {
 		return
 	}
