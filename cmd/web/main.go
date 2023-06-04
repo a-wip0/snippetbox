@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"snippetbox/internal/models"
 )
 
 // Define an application struct to hold the application-wide dependencies for the
@@ -15,6 +16,7 @@ import (
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
@@ -69,6 +71,7 @@ func main() {
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
+		snippets: &models.SnippetModel{DB: db},
 	}
 
 	// Initialize a new http.Server struct. We set the Addr and Handler fields so
