@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"path/filepath"
 	"snippetbox/internal/models"
+	"time"
 )
 
 // Define a templateData type to act as the holding structure for
@@ -16,44 +17,50 @@ type templateData struct {
 	Snippets    []*models.Snippet
 }
 
+// Create a humanDate function which returns a nicely formatted string
+// representation of a time.Time object.
+func humanDate(t time.Time) string {
+	return t.Format("02 Jan 2006 at 15:04")
+}
+
+// Initialize a template.FuncMap object and store it in a global variable. This is
+// essentially a string-keyed map which acts as a lookup between the names of our
+// custom template functions and the functions themselves.
+var functions = template.FuncMap{
+	"humanDate": humanDate,
+}
+
 func newTemplateCache() (map[string]*template.Template, error) {
-	// Initialize a new map to act as the cache.
-	cache := map[string]*template.Template{}
+	cache := map[string]*template.Template{} // Initialize an empty map to store templates.
 
-	// Use the filepath.Glob() function to get a slice of all filepaths that
-	// match the pattern "./ui/html/pages/*.html". This will essentially give
-	// us a slice of all the filepaths for our application 'page' templates
-	// like: [ui/html/pages/home.html ui/html/pages/view.html]
-	pages, err := filepath.Glob("./ui/html/pages/*.html")
+	pages, err := filepath.Glob("./ui/html/pages/*.html") // Find all HTML files in the specified directory.
 	if err != nil {
-		return nil, err
+		return nil, err // Return an error if there was a problem with the file path.
 	}
 
-	// Loop through the page filepaths one-by-one.
-	for _, page := range pages {
-		// Extract the file name (like 'home.html') from the full filepath
-		// and assign it to the name variable.
-		name := filepath.Base(page)
+	for _, page := range pages { // Iterate over each HTML file found.
+		name := filepath.Base(page) // Extract the base name of the file.
 
-		// Create a slice containing the filepaths for our base template, any
-		// partials and the page.
-		files := []string{
-			"./ui/html/base.html",
-			"./ui/html/partials/nav.html",
-			page,
-		}
-
-		// Parse the files into a template set.
-		ts, err := template.ParseFiles(files...)
+		// Create a new template with the given name and register custom functions.
+		ts, err := template.New(name).Funcs(functions).ParseFiles("./ui/html/base.html")
 		if err != nil {
-			return nil, err
+			return nil, err // Return an error if there was a problem parsing the base template.
 		}
 
-		// Add the template set to the map, using the name of the page
-		// (like 'home.html') as the key.
-		cache[name] = ts
+		// Parse all HTML files in the specified directory and add them to the template set.
+		ts, err = ts.ParseGlob("./ui/html/partials/*.html")
+		if err != nil {
+			return nil, err // Return an error if there was a problem parsing the partial templates.
+		}
+
+		// Parse the current HTML file and add it to the template set.
+		ts, err = ts.ParseFiles(page)
+		if err != nil {
+			return nil, err // Return an error if there was a problem parsing the current page template.
+		}
+
+		cache[name] = ts // Add the template set to the cache using the file name as the key.
 	}
 
-	// Return the map.
-	return cache, nil
+	return cache, nil // Return the populated cache of templates.
 }
