@@ -19,3 +19,14 @@ func secureHeaders(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// logRequest is a middleware function that logs information about incoming HTTP requests.
+func (app *application) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Log the remote address, protocol, HTTP method, and request URI of the incoming request.
+		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
+
+		// Call the next handler in the chain.
+		next.ServeHTTP(w, r)
+	})
+}
