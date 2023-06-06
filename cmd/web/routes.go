@@ -6,35 +6,40 @@ import (
 	"net/http"
 )
 
-// Update the signature for the routes() method so that it returns a
-// http.Handler instead of *http.ServeMux.
+// routes() defines the routes for the application.
 func (app *application) routes() http.Handler {
-	// Initialize the router.
+	// Create a new router.
 	router := httprouter.New()
 
-	// Create a handler function which wraps our notFound() helper, and then
-	// assign it as the custom handler for 404 Not Found responses. You can also
-	// set a custom handler for 405 Method Not Allowed responses by setting
-	// router.MethodNotAllowed in the same way too.
+	// Set the NotFound handler to call the app.notFound() function.
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 	})
 
-	// Update the pattern for the route for the static files.
+	// Create a new file server for serving static files.
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
+
+	// Serve static files under the /static path.
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
 
-	// And then create the routes using the appropriate methods, patterns and
-	// handlers.
-	router.HandlerFunc(http.MethodGet, "/", app.home)
-	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.snippetView)
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.snippetCreate)
-	router.HandlerFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
+	// Create a new middleware chain for handling dynamic requests.
+	dynamic := alice.New(app.sessionManager.LoadAndSave)
 
-	// Create a middleware chain containing our 'standard' middleware
-	// which will be used for every request our application receives.
+	// Handle GET requests to the root path.
+	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+
+	// Handle GET requests to the /snippet/view/:id path.
+	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
+
+	// Handle GET requests to the /snippet/create path.
+	router.Handler(http.MethodGet, "/snippet/create", dynamic.ThenFunc(app.snippetCreate))
+
+	// Handle POST requests to the /snippet/create path.
+	router.Handler(http.MethodPost, "/snippet/create", dynamic.ThenFunc(app.snippetCreatePost))
+
+	// Create a new middleware chain for handling standard requests.
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 
-	// Wrap the router with the middleware and return it as normal.
+	// Return a new handler that chains the standard and dynamic middleware chains.
 	return standard.Then(router)
 }
