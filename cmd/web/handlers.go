@@ -70,10 +70,9 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 // Add a new snippetCreate handler, which for now returns a placeholder
 // response. We'll update this shortly to show a HTML form.
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("Display the form for creating a new snippet..."))
-	if err != nil {
-		return
-	}
+	data := app.newTemplateData(r)
+
+	app.render(w, http.StatusOK, "create.html", data)
 }
 
 // Add a snippetCreatePost handler function.
