@@ -84,10 +84,14 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:      *addr,        // Set the server address to the value of the addr flag.
-		ErrorLog:  errorLog,     // Set the server's error log to the errorLog logger.
-		Handler:   app.routes(), // Set the server's handler to the application's routes.
+		Addr:      *addr,
+		ErrorLog:  errorLog,
+		Handler:   app.routes(),
 		TLSConfig: tlsConfig,
+		// Add Idle, Read and Write timeouts to the server.
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	infoLog.Printf("Starting server on %s", *addr) // Log an informational message indicating the server startup.
