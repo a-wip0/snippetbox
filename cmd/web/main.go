@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"github.com/alexedwards/scs/mysqlstore"
@@ -74,10 +75,19 @@ func main() {
 		sessionManager: sessionManager,               // Set the session manager for the application.
 	}
 
+	// Initialize a tls.Config struct to hold the non-default TLS settings we
+	// want the server to use. In this case the only thing that we're changing
+	// is the curve preferences value, so that only elliptic curves with
+	// assembly implementations are used.
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
+
 	srv := &http.Server{
-		Addr:     *addr,        // Set the server address to the value of the addr flag.
-		ErrorLog: errorLog,     // Set the server's error log to the errorLog logger.
-		Handler:  app.routes(), // Set the server's handler to the application's routes.
+		Addr:      *addr,        // Set the server address to the value of the addr flag.
+		ErrorLog:  errorLog,     // Set the server's error log to the errorLog logger.
+		Handler:   app.routes(), // Set the server's handler to the application's routes.
+		TLSConfig: tlsConfig,
 	}
 
 	infoLog.Printf("Starting server on %s", *addr) // Log an informational message indicating the server startup.
