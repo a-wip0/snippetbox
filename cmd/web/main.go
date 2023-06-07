@@ -59,6 +59,11 @@ func main() {
 	sessionManager := scs.New()               // Create a new session manager.
 	sessionManager.Store = mysqlstore.New(db) // Set the session store to use a MySQL-based store.
 	sessionManager.Lifetime = 12 * time.Hour  // Set the session lifetime to 12 hours.
+	// Make sure that the Secure attribute is set on our session cookies.
+	// Setting this means that the cookie will only be sent by a user's web
+	// browser when an HTTPS connection is being used (and won't be sent over an
+	// unsecure HTTP connection).
+	sessionManager.Cookie.Secure = true
 
 	app := &application{
 		errorLog:       errorLog,                     // Set the error log for the application.
@@ -76,8 +81,11 @@ func main() {
 	}
 
 	infoLog.Printf("Starting server on %s", *addr) // Log an informational message indicating the server startup.
-	err = srv.ListenAndServe()                     // Start the HTTP server.
-	errorLog.Fatal(err)                            // If there's an error, log it as a fatal error and terminate the application.
+	// Use the ListenAndServeTLS() method to start the HTTPS server. We
+	// pass in the paths to the TLS certificate and corresponding private key as
+	// the two parameters.
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
+	errorLog.Fatal(err) // If there's an error, log it as a fatal error and terminate the application.
 }
 
 // The openDB() function wraps sql.Open() and returns a sql.DB connection pool
