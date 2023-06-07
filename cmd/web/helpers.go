@@ -35,7 +35,7 @@ func (app *application) notFound(w http.ResponseWriter) {
 
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
 	// Retrieve the appropriate template set from the cache based on the page
-	// name (like 'home.tmpl'). If no entry exists in the cache with the
+	// name (like 'home.html'). If no entry exists in the cache with the
 	// provided name, then create a new error and call the serverError() helper
 	// method that we made earlier and return.
 	ts, ok := app.templateCache[page]
@@ -76,6 +76,8 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 func (app *application) newTemplateData(r *http.Request) *templateData {
 	return &templateData{
 		CurrentYear: time.Now().Year(),
+		// Add the flash message to the template data, if one exists.
+		Flash: app.sessionManager.PopString(r.Context(), "flash"),
 	}
 }
 

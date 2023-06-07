@@ -107,6 +107,20 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	// Create an instance of the snippetCreateForm struct containing the values
+	// from the form and an empty map for any validation errors.
+	form = snippetCreateForm{
+		Title:   r.PostForm.Get("title"),
+		Content: r.PostForm.Get("content"),
+		Expires: expires,
+	}
+
 	// Perform validation checks on the form fields.
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
@@ -117,7 +131,7 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		// If the form is invalid, prepare template data and render the create template with the form data.
 		data := app.newTemplateData(r)
 		data.Form = form
-		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
+		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
 		return
 	}
 
@@ -127,6 +141,10 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err) // Return a server error if the insertion fails.
 		return
 	}
+
+	// Use the Put() method to add a string value ("Snippet successfully
+	// created!") and the corresponding key ("flash") to the session data.
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
 	// Redirect the user to view the newly created post.
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
