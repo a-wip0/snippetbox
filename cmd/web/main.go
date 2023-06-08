@@ -23,6 +23,7 @@ type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       *models.SnippetModel
+	users          *models.UserModel
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -70,9 +71,10 @@ func main() {
 		errorLog:       errorLog,                     // Set the error log for the application.
 		infoLog:        infoLog,                      // Set the info log for the application.
 		snippets:       &models.SnippetModel{DB: db}, // Create a snippet model with the database connection.
-		templateCache:  templateCache,                // Set the template cache for the application.
-		formDecoder:    formDecoder,                  // Set the form decoder for the application.
-		sessionManager: sessionManager,               // Set the session manager for the application.
+		users:          &models.UserModel{DB: db},
+		templateCache:  templateCache,  // Set the template cache for the application.
+		formDecoder:    formDecoder,    // Set the form decoder for the application.
+		sessionManager: sessionManager, // Set the session manager for the application.
 	}
 
 	// Initialize a tls.Config struct to hold the non-default TLS settings we
@@ -84,11 +86,10 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:      *addr,
-		ErrorLog:  errorLog,
-		Handler:   app.routes(),
-		TLSConfig: tlsConfig,
-		// Add Idle, Read and Write timeouts to the server.
+		Addr:         *addr,
+		ErrorLog:     errorLog,
+		Handler:      app.routes(),
+		TLSConfig:    tlsConfig,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
