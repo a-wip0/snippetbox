@@ -98,55 +98,37 @@ type snippetCreateForm struct {
 
 // snippetCreatePost handles the creation of a post in the web application.
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	var form snippetCreateForm // Declare a variable to hold the form data.
+	var form snippetCreateForm
 
-	// Decode the form data from the HTTP request.
 	err := app.decodePostForm(r, &form)
-	if err != nil {
-		app.clientError(w, http.StatusBadRequest) // Return a bad request error if decoding fails.
-		return
-	}
-
-	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	// Create an instance of the snippetCreateForm struct containing the values
-	// from the form and an empty map for any validation errors.
-	form = snippetCreateForm{
-		Title:   r.PostForm.Get("title"),
-		Content: r.PostForm.Get("content"),
-		Expires: expires,
-	}
-
-	// Perform validation checks on the form fields.
 	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
 	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
-	form.CheckField(validator.PermittedInt(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
+	// Use the generic PermittedValue() function instead of the type-specific
+	// PermittedInt() function.
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
 
 	if !form.Valid() {
-		// If the form is invalid, prepare template data and render the create template with the form data.
 		data := app.newTemplateData(r)
 		data.Form = form
-		app.render(w, http.StatusUnprocessableEntity, "create.html", data)
+
+		app.render(w, http.StatusUnprocessableEntity, "create.tmpl", data)
 		return
 	}
 
-	// Insert the form data into the database to create a new post.
 	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
-		app.serverError(w, err) // Return a server error if the insertion fails.
+		app.serverError(w, err)
 		return
 	}
 
-	// Use the Put() method to add a string value ("Snippet successfully
-	// created!") and the corresponding key ("flash") to the session data.
 	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
-	// Redirect the user to view the newly created post.
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
 
