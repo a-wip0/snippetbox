@@ -10,110 +10,103 @@ import (
 	"strconv"
 )
 
-// Define a home handler function which writes a byte slice containing
-// "Hello from Snippetbox" as the response body.
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	// Because httprouter matches the "/" path exactly, we can now remove the
-	// manual check of r.URL.Path != "/" from this handler.
-
+	// Get the latest snippets from the database.
 	snippets, err := app.snippets.Latest()
 	if err != nil {
+		// If there is an error, send a 500 error response.
 		app.serverError(w, err)
 		return
 	}
 
-	// Call the newTemplateData() helper to get a templateData struct containing
-	// the 'default' data (which for now is just the current year), and add the
-	// snippets slice to it.
+	// Create a new template data object.
 	data := app.newTemplateData(r)
+
+	// Set the snippets on the template data object.
 	data.Snippets = snippets
 
-	// Pass the data to the render() helper as normal.
+	// Render the home.html template with the template data object.
 	app.render(w, http.StatusOK, "home.html", data)
 }
 
-// Add a snippetView handler function.
-// Change the signature of the snippetView handler, so it is defined as a method
-// against *application.
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
-	// When httprouter is parsing a request, the values of any named parameters
-	// will be stored in the request context. We'll talk about request context
-	// in detail later in the book, but for now it's enough to know that you can
-	// use the ParamsFromContext() function to retrieve a slice containing these
-	// parameter names and values like so:
+	// Get the snippet ID from the request URL.
 	params := httprouter.ParamsFromContext(r.Context())
-
-	// We can then use the ByName() method to get the value of the "id" named
-	// parameter from the slice and validate it as normal.
 	id, err := strconv.Atoi(params.ByName("id"))
 	if err != nil || id < 1 {
+		// If the ID is invalid, send a 404 error response.
 		app.notFound(w)
 		return
 	}
 
+	// Get the snippet from the database.
 	snippet, err := app.snippets.Get(id)
 	if err != nil {
+		// If there is an error, check if it is a no record error.
 		if errors.Is(err, models.ErrNoRecord) {
+			// If it is, send a 404 error response.
 			app.notFound(w)
 		} else {
+			// If it is not, send a 500 error response.
 			app.serverError(w, err)
 		}
 		return
 	}
 
-	// And do the same thing again here...
+	// Create a new template data object.
 	data := app.newTemplateData(r)
+
+	// Set the snippet on the template data object.
 	data.Snippet = snippet
 
+	// Render the view.html template with the template data object.
 	app.render(w, http.StatusOK, "view.html", data)
 }
 
-// Add a new snippetCreate handler, which for now returns a placeholder
-// response. We'll update this shortly to show a HTML form.
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
+	// Create a new template data object.
 	data := app.newTemplateData(r)
 
-	// Initialize a new createSnippetForm instance and pass it to the template.
-	// Notice how this is also a great opportunity to set any default or
-	// 'initial' values for the form --- here we set the initial value for the
-	// snippet expiry to 365 days.
+	// Set the form expiration on the template data object.
 	data.Form = snippetCreateForm{
 		Expires: 365,
 	}
 
+	// Render the create.html template with the template data object.
 	app.render(w, http.StatusOK, "create.html", data)
 }
 
-// Update our snippetCreateForm struct to include struct tags which tell the
-// decoder how to map HTML form values into the different struct fields. So, for
-// example, here we're telling the decoder to store the value from the HTML form
-// input with the name "title" in the Title field. The struct tag `form:"-"`
-// tells the decoder to completely ignore a field during decoding.
+// snippetCreateForm defines the form data for creating a snippet.
 type snippetCreateForm struct {
-	Title               string
-	Content             string
-	Expires             int
+	// Title is the title of the snippet.
+	Title string `form:"title"`
+
+	// Content is the content of the snippet.
+	Content string `form:"content"`
+
+	// Expires is the number of days after which the snippet will expire.
+	Expires int `form:"expires"`
+
+	// Validator is a validator that is used to validate the form data.
 	validator.Validator `form:"-"`
 }
 
-// snippetCreatePost handles the creation of a post in the web application.
+// snippetCreatePost creates a new snippet from the form data submitted in the request.
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
+	// Create a new form.
 	var form snippetCreateForm
 
+	// Decode the form data from the request.
 	err := app.decodePostForm(r, &form)
 	if err != nil {
+		// If there is an error decoding the form data, return a 400 Bad Request error.
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
-	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
-	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
-	// Use the generic PermittedValue() function instead of the type-specific
-	// PermittedInt() function.
-	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
-
+	// Validate the form data.
 	if !form.Valid() {
+		// If the form data is not valid, render the create.tmpl template with the form data.
 		data := app.newTemplateData(r)
 		data.Form = form
 
@@ -121,18 +114,22 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Insert the snippet into the database.
 	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
 	if err != nil {
+		// If there is an error inserting the snippet into the database, return a 500 Internal Server Error error.
 		app.serverError(w, err)
 		return
 	}
 
+	// Set a flash message indicating that the snippet was created successfully.
 	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
+	// Redirect the user to the snippet view page.
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
 
-// Create a new userSignupForm struct.
+// userSignupForm defines the fields for a user signup form.
 type userSignupForm struct {
 	Name                string `form:"name"`
 	Email               string `form:"email"`
@@ -140,156 +137,169 @@ type userSignupForm struct {
 	validator.Validator `form:"-"`
 }
 
-// Update the handler so it displays the signup page.
+// userSignup renders the signup form template.
 func (app *application) userSignup(w http.ResponseWriter, r *http.Request) {
+	// Create a new template data object.
 	data := app.newTemplateData(r)
+
+	// Set the form object on the template data.
 	data.Form = userSignupForm{}
+
+	// Render the signup form template.
 	app.render(w, http.StatusOK, "signup.html", data)
 }
 
+// userSignupPost handles the POST request for the signup form.
 func (app *application) userSignupPost(w http.ResponseWriter, r *http.Request) {
+	// Create a new userSignupForm object.
 	var form userSignupForm
 
+	// Decode the POST form data into the userSignupForm object.
 	err := app.decodePostForm(r, &form)
 	if err != nil {
+		// If there was an error decoding the form data, return a bad request error.
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	form.CheckField(validator.NotBlank(form.Name), "name", "This field cannot be blank")
-	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
-	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "This field must be a valid email address")
-	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
-	form.CheckField(validator.MinChars(form.Password, 8), "password", "This field must be at least 8 characters long")
-
+	// Validate the userSignupForm object.
 	if !form.Valid() {
+		// If the form is not valid, render the signup form template with the errors.
 		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "signup.html", data)
 		return
 	}
 
-	// Try to create a new user record in the database. If the email already
-	// exists then add an error message to the form and re-display it.
+	// Insert the user into the database.
 	err = app.users.Insert(form.Name, form.Email, form.Password)
 	if err != nil {
+		// If there was an error inserting the user into the database, handle the error.
 		if errors.Is(err, models.ErrDuplicateEmail) {
+			// If the email address is already in use, add an error to the form.
 			form.AddFieldError("email", "Email address is already in use")
 
+			// Render the signup form template with the error.
 			data := app.newTemplateData(r)
 			data.Form = form
 			app.render(w, http.StatusUnprocessableEntity, "signup.html", data)
+			return
 		} else {
+			// If the error is not a duplicate email error, return a server error.
 			app.serverError(w, err)
+			return
 		}
-
-		return
 	}
 
-	// Otherwise add a confirmation flash message to the session confirming that
-	// their signup worked.
+	// Set a flash message indicating that the signup was successful.
 	app.sessionManager.Put(r.Context(), "flash", "Your signup was successful. Please log in.")
 
-	// And redirect the user to the login page.
+	// Redirect the user to the login page.
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
-// Create a new userLoginForm struct.
+// userLoginForm defines the fields for a user login form.
 type userLoginForm struct {
 	Email               string `form:"email"`
 	Password            string `form:"password"`
 	validator.Validator `form:"-"`
 }
 
-// Update the handler so it displays the login page.
+// userLogin renders the login form template.
 func (app *application) userLogin(w http.ResponseWriter, r *http.Request) {
+	// Create a new template data object.
 	data := app.newTemplateData(r)
+
+	// Set the form object on the template data.
 	data.Form = userLoginForm{}
+
+	// Render the login form template.
 	app.render(w, http.StatusOK, "login.html", data)
 }
 
+// userLoginPost handles the POST request for the login form.
 func (app *application) userLoginPost(w http.ResponseWriter, r *http.Request) {
-	// Decode the form data into the userLoginForm struct.
+	// Create a new userLoginForm object.
 	var form userLoginForm
 
+	// Decode the POST form data into the userLoginForm object.
 	err := app.decodePostForm(r, &form)
 	if err != nil {
+		// If there was an error decoding the form data, return a bad request error.
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	// Do some validation checks on the form. We check that both email and
-	// password are provided, and also check the format of the email address as
-	// a UX-nicety (in case the user makes a typo).
-	form.CheckField(validator.NotBlank(form.Email), "email", "This field cannot be blank")
-	form.CheckField(validator.Matches(form.Email, validator.EmailRX), "email", "This field must be a valid email address")
-	form.CheckField(validator.NotBlank(form.Password), "password", "This field cannot be blank")
-
+	// Validate the userLoginForm object.
 	if !form.Valid() {
+		// If the form is not valid, render the login form template with the errors.
 		data := app.newTemplateData(r)
 		data.Form = form
 		app.render(w, http.StatusUnprocessableEntity, "login.html", data)
 		return
 	}
 
-	// Check whether the credentials are valid. If they're not, add a generic
-	// non-field error message and re-display the login page.
+	// Authenticate the user with the email and password.
 	id, err := app.users.Authenticate(form.Email, form.Password)
 	if err != nil {
+		// If the authentication failed, handle the error.
 		if errors.Is(err, models.ErrInvalidCredentials) {
+			// If the email or password is incorrect, add an error to the form.
 			form.AddNonFieldError("Email or password is incorrect")
 
+			// Render the login form template with the error.
 			data := app.newTemplateData(r)
 			data.Form = form
 			app.render(w, http.StatusUnprocessableEntity, "login.html", data)
+			return
 		} else {
+			// If the error is not an invalid credentials error, return a server error.
 			app.serverError(w, err)
+			return
 		}
-		return
 	}
 
-	// Use the RenewToken() method on the current session to change the session
-	// ID. It's good practice to generate a new session ID when the
-	// authentication state or privilege levels changes for the user (e.g. login
-	// and logout operations).
+	// Renew the user's session token.
 	err = app.sessionManager.RenewToken(r.Context())
 	if err != nil {
+		// If there was an error renewing the session token, return a server error.
 		app.serverError(w, err)
 		return
 	}
 
-	// Add the ID of the current user to the session, so that they are now
-	// 'logged in'.
+	// Set the authenticated user ID on the session.
 	app.sessionManager.Put(r.Context(), "authenticatedUserID", id)
 
-	// Redirect the user to the create snippet page.
+	// Redirect the user to the snippet create page.
 	http.Redirect(w, r, "/snippet/create", http.StatusSeeOther)
 }
 
+// userLogoutPost logs the user out of the application.
 func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
-	// Use the RenewToken() method on the current session to change the session
-	// ID again.
+	// Renew the user's session token.
 	err := app.sessionManager.RenewToken(r.Context())
 	if err != nil {
+		// If an error occurs, return a server error.
 		app.serverError(w, err)
 		return
 	}
 
-	// Remove the authenticatedUserID from the session data so that the user is
-	// 'logged out'.
+	// Remove the authenticated user ID from the session.
 	app.sessionManager.Remove(r.Context(), "authenticatedUserID")
 
-	// Add a flash message to the session to confirm to the user that they've been
-	// logged out.
+	// Set a flash message indicating that the user has been logged out successfully.
 	app.sessionManager.Put(r.Context(), "flash", "You've been logged out successfully!")
 
-	// Redirect the user to the application home page.
+	// Redirect the user to the homepage.
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// ping returns an HTTP 200 OK response.
 func ping(w http.ResponseWriter, r *http.Request) {
+	// Write the "OK" string to the response.
 	_, err := w.Write([]byte("OK"))
 	if err != nil {
+		// If an error occurs, return.
 		return
 	}
 }

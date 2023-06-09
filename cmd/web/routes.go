@@ -7,35 +7,58 @@ import (
 	"snippetbox/ui"
 )
 
-// routes() defines the routes for the application.
 func (app *application) routes() http.Handler {
+	// The `router` variable is used to create a router.
 	router := httprouter.New()
 
+	// The `NotFound` function is called when a request is made to a route that does not exist.
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 	})
 
+	// The `fileServer` variable is used to serve static files.
 	fileServer := http.FileServer(http.FS(ui.Files))
 	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
-	// Add a new GET /ping route.
+	// The `ping` function is used to test the application.
 	router.HandlerFunc(http.MethodGet, "/ping", ping)
 
+	// The `dynamic` variable is used to chain middleware functions to the router.
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
+	// The `home` function is used to handle requests to the home page.
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
+
+	// The `snippetView` function is used to handle requests to view a snippet.
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
+
+	// The `userSignup` function is used to handle requests to sign up for a user account.
 	router.Handler(http.MethodGet, "/user/signup", dynamic.ThenFunc(app.userSignup))
+
+	// The `userSignupPost` function is used to handle requests to post a user signup form.
 	router.Handler(http.MethodPost, "/user/signup", dynamic.ThenFunc(app.userSignupPost))
+
+	// The `userLogin` function is used to handle requests to log in to a user account.
 	router.Handler(http.MethodGet, "/user/login", dynamic.ThenFunc(app.userLogin))
+
+	// The `userLoginPost` function is used to handle requests to post a user login form.
 	router.Handler(http.MethodPost, "/user/login", dynamic.ThenFunc(app.userLoginPost))
 
+	// The `protected` variable is used to add additional middleware functions to the router.
 	protected := dynamic.Append(app.requireAuthentication)
 
+	// The `snippetCreate` function is used to handle requests to create a snippet.
 	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))
+
+	// The `snippetCreatePost` function is used to handle requests to post a snippet create form.
 	router.Handler(http.MethodPost, "/snippet/create", protected.ThenFunc(app.snippetCreatePost))
+
+	// The `userLogoutPost` function is used to handle requests to logout of a user account.
 	router.Handler(http.MethodPost, "/user/logout", protected.ThenFunc(app.userLogoutPost))
 
+	// The `standard` variable is used to add additional features to the router.
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
+
+	// The `return` statement returns the router.
 	return standard.Then(router)
 }

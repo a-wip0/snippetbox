@@ -16,72 +16,73 @@ import (
 	"time"
 )
 
+// The application struct represents the application itself. It contains
+// references to the various components that the application needs, such as
+// the logger, the database, the template cache, and the session manager.
 type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
-	snippets       models.SnippetModelInterface // Use our new interface type.
-	users          models.UserModelInterface    // Use our new interface type.
+	snippets       models.SnippetModelInterface
+	users          models.UserModelInterface
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
 }
 
+// The main function is the entry point for the application. It starts by
+// parsing the command-line flags, which specify the HTTP network address and
+// the MySQL data source name. It then creates a new logger, opens the database,
+// creates a new template cache, creates a new form decoder, and creates a new
+// session manager. Finally, it creates a new application instance, starts the
+// HTTP server, and waits for the server to terminate.
 func main() {
-	addr := flag.String("addr", ":4000", "HTTP network address") // Define a command-line flag for the HTTP network address.
+	// Parse the command-line flags.
+	addr := flag.String("addr", ":4000", "HTTP network address")
+	dsn := flag.String("dsn", "snippetbox_admin:snippetbox_admin_pass@/snippetbox?parseTime=true", "MySQL data source name")
+	flag.Parse()
 
-	dsn := flag.String("dsn", "snippetbox_admin:snippetbox_admin_pass@/snippetbox?parseTime=true", "MySQL data source name") // Define a command-line flag for the MySQL data source name.
+	// Create a new logger.
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	flag.Parse() // Parse the command-line flags.
-
-	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)                  // Create a logger for informational logs.
-	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile) // Create a logger for error logs.
-
-	db, err := openDB(*dsn) // Open a connection to the database using the provided data source name.
+	// Open the database.
+	db, err := openDB(*dsn)
 	if err != nil {
-		errorLog.Fatal(err) // If there's an error, log it as a fatal error and terminate the application.
+		errorLog.Fatal(err)
 	}
 
-	defer func(db *sql.DB) {
-		err := db.Close() // Close the database connection when the main function exits.
-		if err != nil {
-			errorLog.Fatal(err) // If there's an error, log it as a fatal error and terminate the application.
-		}
-	}(db)
-
-	templateCache, err := newTemplateCache() // Create a new template cache.
+	// Create a new template cache.
+	templateCache, err := newTemplateCache()
 	if err != nil {
-		errorLog.Fatal(err) // If there's an error, log it as a fatal error and terminate the application.
+		errorLog.Fatal(err)
 	}
 
-	formDecoder := form.NewDecoder() // Create a form decoder for decoding form data.
+	// Create a new form decoder.
+	formDecoder := form.NewDecoder()
 
-	sessionManager := scs.New()               // Create a new session manager.
-	sessionManager.Store = mysqlstore.New(db) // Set the session store to use a MySQL-based store.
-	sessionManager.Lifetime = 12 * time.Hour  // Set the session lifetime to 12 hours.
-	// Make sure that the Secure attribute is set on our session cookies.
-	// Setting this means that the cookie will only be sent by a user's web
-	// browser when an HTTPS connection is being used (and won't be sent over an
-	// unsecure HTTP connection).
+	// Create a new session manager.
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
 	sessionManager.Cookie.Secure = true
 
+	// Create a new application instance.
 	app := &application{
-		errorLog:       errorLog,                     // Set the error log for the application.
-		infoLog:        infoLog,                      // Set the info log for the application.
-		snippets:       &models.SnippetModel{DB: db}, // Create a snippet model with the database connection.
+		errorLog:       errorLog,
+		infoLog:        infoLog,
+		snippets:       &models.SnippetModel{DB: db},
 		users:          &models.UserModel{DB: db},
-		templateCache:  templateCache,  // Set the template cache for the application.
-		formDecoder:    formDecoder,    // Set the form decoder for the application.
-		sessionManager: sessionManager, // Set the session manager for the application.
+		templateCache:  templateCache,
+		formDecoder:    formDecoder,
+		sessionManager: sessionManager,
 	}
 
-	// Initialize a tls.Config struct to hold the non-default TLS settings we
-	// want the server to use. In this case the only thing that we're changing
-	// is the curve preferences value, so that only elliptic curves with
-	// assembly implementations are used.
+	// Start the HTTP server.
 	tlsConfig := &tls.Config{
 		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
 	}
 
+	// Initialize a new http.Server struct.
 	srv := &http.Server{
 		Addr:         *addr,
 		ErrorLog:     errorLog,
@@ -92,23 +93,26 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	infoLog.Printf("Starting server on %s", *addr) // Log an informational message indicating the server startup.
-	// Use the ListenAndServeTLS() method to start the HTTPS server. We
-	// pass in the paths to the TLS certificate and corresponding private key as
-	// the two parameters.
+	// Start the server.
+	infoLog.Printf("Starting server on %s", *addr)
 	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
-	errorLog.Fatal(err) // If there's an error, log it as a fatal error and terminate the application.
+	errorLog.Fatal(err)
 }
 
-// The openDB() function wraps sql.Open() and returns a sql.DB connection pool
-// for a given DSN.
+// The openDB function opens a new database connection using the specified
+// MySQL data source name.
 func openDB(dsn string) (*sql.DB, error) {
+	// Open the database connection.
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}
+
+	// Ping the database to make sure it's alive.
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
+
+	// Return the database connection.
 	return db, nil
 }
