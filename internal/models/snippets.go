@@ -150,3 +150,9 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 	// If everything went OK then return the Snippets slice.
 	return snippets, nil
 }
+
+type SnippetModelInterface interface {
+	Insert(title string, content string, expires int) (int, error)
+	Get(id int) (*Snippet, error)
+	Latest() ([]*Snippet, error)
+}
