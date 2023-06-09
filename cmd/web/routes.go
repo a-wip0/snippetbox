@@ -22,8 +22,8 @@ func (app *application) routes() http.Handler {
 	// Serve static files under the /static path.
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
 
-	// Create a new middleware chain for handling dynamic requests.
-	dynamic := alice.New(app.sessionManager.LoadAndSave)
+	// Use the nosurf middleware on all our 'dynamic' routes.
+	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf)
 
 	// Handle GET requests to the root path.
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
