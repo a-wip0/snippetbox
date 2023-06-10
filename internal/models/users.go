@@ -9,99 +9,95 @@ import (
 	"time"
 )
 
-// User type. Notice how the field names and types align
-// with the columns in the database "users" table?
+// User represents a user in the system.
 type User struct {
-	ID             int
-	Name           string
-	Email          string
-	HashedPassword []byte
-	Created        time.Time
+	ID             int       `db:"id"`              // The user ID.
+	Name           string    `db:"name"`            // The user name.
+	Email          string    `db:"email"`           // The user email address.
+	HashedPassword []byte    `db:"hashed_password"` // The user password, hashed with bcrypt.
+	Created        time.Time `db:"created"`         // The user creation date.
 }
 
-// UserModel type which wraps a database connection pool.
+// UserModel is a repository for users.
 type UserModel struct {
-	DB *sql.DB
+	DB *sql.DB // The database connection.
 }
 
-// Insert method to add a new record to the "users" table.
+// Insert inserts a new user into the database.
 func (m *UserModel) Insert(name, email, password string) error {
-	// Create a bcrypt hash of the plain-text password.
+	// Generate a bcrypt hash of the password.
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return err
 	}
 
+	// Prepare the SQL statement.
 	stmt := `INSERT INTO users (name, email, hashed_password, created)
     VALUES(?, ?, ?, UTC_TIMESTAMP())`
 
-	// Use the Exec() method to insert the user details and hashed password
-	// into the users table.
+	// Execute the SQL statement.
 	_, err = m.DB.Exec(stmt, name, email, string(hashedPassword))
 	if err != nil {
-		// If this returns an error, we use the errors.As() function to check
-		// whether the error has the type *mysql.MySQLError. If it does, the
-		// error will be assigned to the mySQLError variable. We can then check
-		// whether or not the error relates to our users_uc_email key by
-		// checking if the error code equals 1062 and the contents of the error
-		// message string. If it does, we return an ErrDuplicateEmail error.
+		// Check if the error is a MySQL error with code 1062 (duplicate key).
 		var mySQLError *mysql.MySQLError
 		if errors.As(err, &mySQLError) {
 			if mySQLError.Number == 1062 && strings.Contains(mySQLError.Message, "users_uc_email") {
+				// The email address is already in use.
 				return ErrDuplicateEmail
 			}
 		}
+
+		// Return the error.
 		return err
 	}
 
+	// No error.
 	return nil
 }
 
-// Authenticate method to verify whether a user exists with
-// the provided email address and password. This will return the relevant
-// user ID if they do.
+// Authenticate a user by email and password.
 func (m *UserModel) Authenticate(email, password string) (int, error) {
-	// Retrieve the id and hashed password associated with the given email. If
-	// no matching email exists we return the ErrInvalidCredentials error.
+	// Get the user ID and hashed password from the database.
 	var id int
 	var hashedPassword []byte
-
 	stmt := "SELECT id, hashed_password FROM users WHERE email = ?"
-
 	err := m.DB.QueryRow(stmt, email).Scan(&id, &hashedPassword)
 	if err != nil {
+		// If there are no rows in the database, the user does not exist.
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrInvalidCredentials
 		} else {
+			// Otherwise, return the error.
 			return 0, err
 		}
 	}
 
-	// Check whether the hashed password and plain-text password provided match.
-	// If they don't, we return the ErrInvalidCredentials error.
+	// Compare the hashed password with the user-supplied password.
 	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
 	if err != nil {
+		// If the passwords do not match, return an error.
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 			return 0, ErrInvalidCredentials
 		} else {
+			// Otherwise, return the error.
 			return 0, err
 		}
 	}
 
-	// Otherwise, the password is correct. Return the user ID.
+	// The user has been authenticated successfully.
 	return id, nil
 }
 
-// Exists method to check if a user exists with a specific ID.
+// Check if a user exists with the given ID.
 func (m *UserModel) Exists(id int) (bool, error) {
+	// Check if the user exists in the database.
 	var exists bool
-
 	stmt := "SELECT EXISTS(SELECT true FROM users WHERE id = ?)"
-
 	err := m.DB.QueryRow(stmt, id).Scan(&exists)
 	return exists, err
 }
 
+// UserModelInterface is an interface that defines the methods for a user model.
 type UserModelInterface interface {
 	Insert(name, email, password string) error
 	Authenticate(email, password string) (int, error)
