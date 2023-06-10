@@ -9,69 +9,68 @@ import (
 	"time"
 )
 
-// Define a templateData type to act as the holding structure for
-// any dynamic data that we want to pass to our HTML templates.
-// At the moment it only contains one field, but we'll add more
-// to it as the build progresses.
+// `templateData` struct contains all the data that will be passed to the template.
 type templateData struct {
 	CurrentYear     int
 	Snippet         *models.Snippet
 	Snippets        []*models.Snippet
 	Form            any
-	Flash           string // Add a Flash field to the templateData struct.
-	IsAuthenticated bool   // Add an IsAuthenticated field to the templateData struct.
-	CSRFToken       string // Add a CSRFToken field.
+	Flash           string
+	IsAuthenticated bool
+	CSRFToken       string
 }
 
+// `humanDate` function formats a `time.Time` object into a human-readable string.
 func humanDate(t time.Time) string {
-	// Return the empty string if time has the zero value.
+	// If the `time.Time` object is empty, return an empty string.
 	if t.IsZero() {
 		return ""
 	}
 
-	// Convert the time to UTC before formatting it.
+	// Return a formatted string of the `time.Time` object.
 	return t.UTC().Format("02 Jan 2006 at 15:04")
 }
 
-// Initialize a template.FuncMap object and store it in a global variable. This is
-// essentially a string-keyed map which acts as a lookup between the names of our
-// custom template functions and the functions themselves.
+// `functions` is a template function map that contains the `humanDate` function.
 var functions = template.FuncMap{
 	"humanDate": humanDate,
 }
 
+// `newTemplateCache` function creates a cache of templates.
 func newTemplateCache() (map[string]*template.Template, error) {
+	// `cache` is a map that stores the templates by their name.
 	cache := map[string]*template.Template{}
 
-	// Use fs.Glob() to get a slice of all filepaths in the ui.Files embedded
-	// filesystem which match the pattern 'html/pages/*.html'. This essentially
-	// gives us a slice of all the 'page' templates for the application, just
-	// like before.
+	// `pages` is a slice of the paths to all the HTML pages.
 	pages, err := fs.Glob(ui.Files, "html/pages/*.html")
 	if err != nil {
+		// If an error occurs, return an error.
 		return nil, err
 	}
 
+	// Iterate over the pages.
 	for _, page := range pages {
+		// Get the name of the page.
 		name := filepath.Base(page)
 
-		// Create a slice containing the filepath patterns for the templates we
-		// want to parse.
+		// Get the patterns for the templates that should be parsed for the page.
 		patterns := []string{
 			"html/base.html",
 			"html/partials/*.html",
 			page,
 		}
 
-		// Use ParseFS() instead of ParseFiles() to parse the template files
-		// from the ui.Files embedded filesystem.
+		// Create a new template with the given name and functions.
 		ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
 		if err != nil {
+			// If an error occurs, return an error.
 			return nil, err
 		}
 
+		// Add the template to the cache.
 		cache[name] = ts
 	}
 
+	// Return the cache.
 	return cache, nil
 }

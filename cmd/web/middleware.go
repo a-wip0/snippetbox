@@ -7,116 +7,130 @@ import (
 	"net/http"
 )
 
+// secureHeaders sets security headers on the response.
 func secureHeaders(next http.Handler) http.Handler {
+	// This function sets the following security headers:
+	// - Content-Security-Policy: This header prevents the browser from loading resources from other domains.
+	// - Referrer-Policy: This header prevents the browser from sending the referrer URL with cross-origin requests.
+	// - X-Content-Type-Options: This header prevents the browser from MIME-sniffing a response.
+	// - X-Frame-Options: This header prevents the browser from framing the page in an iframe.
+	// - X-XSS-Protection: This header enables XSS protection.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note: This is split across multiple lines for readability. You don't
-		// need to do this in your own code.
-		w.Header().Set("Content-Security-Policy",
-			"default-src 'self'; style-src 'self' fonts.googleapis.com; font-src fonts.gstatic.com")
-
+		// Set the security headers.
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' fonts.googleapis.com; font-src fonts.gstatic.com")
 		w.Header().Set("Referrer-Policy", "origin-when-cross-origin")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "deny")
-		w.Header().Set("X-XSS-Protection", "0")
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// logRequest is a middleware function that logs information about incoming HTTP requests.
-func (app *application) logRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Log the remote address, protocol, HTTP method, and request URI of the incoming request.
-		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
+		w.Header().Set("X-XSS-Protection", "1")
 
 		// Call the next handler in the chain.
 		next.ServeHTTP(w, r)
 	})
 }
 
+// `logRequest` logs the request information to the application's `infoLog` logger.
+func (app *application) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Log the request information.
+		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
+
+		// Serve the request using the next handler.
+		next.ServeHTTP(w, r)
+	})
+}
+
+// `recoverPanic` recovers from panics and sends a 500 Internal Server Error response to the client.
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Create a deferred function (which will always be run in the event
-		// of a panic as Go unwinds the stack).
+		// Deferred function that recovers from panics.
 		defer func() {
-			// Use the builtin recover function to check if there has been a
-			// panic or not. If there has...
+			// If there was a panic, send a 500 Internal Server Error response to the client.
 			if err := recover(); err != nil {
-				// Set a "Connection: close" header on the response.
 				w.Header().Set("Connection", "close")
-				// Call the app.serverError helper method to return a 500
-				// Internal Server response.
 				app.serverError(w, fmt.Errorf("%s", err))
 			}
 		}()
 
+		// Serve the request using the next handler.
 		next.ServeHTTP(w, r)
 	})
 }
 
 func (app *application) requireAuthentication(next http.Handler) http.Handler {
+	// This function is used to require authentication for all requests that
+	// are passed to the `next` handler. If the request is not authenticated,
+	// the user will be redirected to the `/user/login` page.
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// If the user is not authenticated, redirect them to the login page and
-		// return from the middleware chain so that no subsequent handlers in
-		// the chain are executed.
+		// Check if the user is authenticated.
 		if !app.isAuthenticated(r) {
+			// If the user is not authenticated, redirect them to the login page.
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
-		// Otherwise set the "Cache-Control: no-store" header so that pages
-		// require authentication are not stored in the users browser cache (or
-		// other intermediary cache).
+		// Set the "Cache-Control" header to "no-store" to prevent the browser from caching
+		// the response. This is important for security reasons, as it prevents an attacker
+		// from caching a sensitive response and then serving it to other users.
 		w.Header().Add("Cache-Control", "no-store")
 
-		// And call the next handler in the chain.
+		// Call the `next` handler to handle the request.
 		next.ServeHTTP(w, r)
 	})
 }
 
-// Create a NoSurf middleware function which uses a customized CSRF cookie with
-// the Secure, Path and HttpOnly attributes set.
 func noSurf(next http.Handler) http.Handler {
+	// This function is used to protect against cross-site request forgery (CSRF) attacks.
+	// It does this by creating a CSRF token and adding it to the request. The CSRF token
+	// is then validated by the `next` handler.
+
 	csrfHandler := nosurf.New(next)
 	csrfHandler.SetBaseCookie(http.Cookie{
+		// Set the `HttpOnly` flag to true to prevent the browser from exposing the CSRF token
+		// to JavaScript. This is important for security reasons, as it prevents an attacker
+		// from stealing the CSRF token and using it to perform unauthorized actions on the user's behalf.
 		HttpOnly: true,
-		Path:     "/",
-		Secure:   true,
+		// Set the `Path` to "/" to make the CSRF token valid for all requests on the application.
+		Path: "/",
+		// Set the `Secure` flag to true to require the CSRF token to be sent over a secure connection.
+		Secure: true,
 	})
 
 	return csrfHandler
 }
 
 func (app *application) authenticate(next http.Handler) http.Handler {
+	// This function is used to authenticate users before they are allowed to access
+	// the `next` handler. If the user is not authenticated, they will be redirected
+	// to the login page.
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve the authenticatedUserID value from the session using the
-		// GetInt() method. This will return the zero value for an int (0) if no
-		// "authenticatedUserID" value is in the session -- in which case we
-		// call the next handler in the chain as normal and return.
+		// Get the user ID from the session manager.
 		id := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
+		// If the user ID is 0, then the user is not authenticated.
 		if id == 0 {
+			// In this case, we simply call the `next` handler to handle the request.
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Otherwise, we check to see if a user with that ID exists in our
-		// database.
+		// Check if the user exists in the database.
 		exists, err := app.users.Exists(id)
+
+		// If there is an error, then we handle it and return.
 		if err != nil {
 			app.serverError(w, err)
 			return
 		}
 
-		// If a matching user is found, we know we know that the request is
-		// coming from an authenticated user who exists in our database. We
-		// create a new copy of the request (with an isAuthenticatedContextKey
-		// value of true in the request context) and assign it to r.
+		// If the user exists, then we set the `isAuthenticated` context key to `true`.
 		if exists {
 			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
 			r = r.WithContext(ctx)
 		}
 
-		// Call the next handler in the chain.
+		// Finally, we call the `next` handler to handle the request.
 		next.ServeHTTP(w, r)
 	})
 }

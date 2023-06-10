@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// The serverError helper writes an error message and stack trace to the errorLog,
-// then sends a generic 500 Internal Server Error response to the user.
+// serverError writes a server error to the response writer.
+// The error is logged to the application's error log.
 func (app *application) serverError(w http.ResponseWriter, err error) {
 	trace := fmt.Sprintf("%s\n%s", err.Error(), debug.Stack())
 	app.errorLog.Println(trace)
@@ -20,25 +20,21 @@ func (app *application) serverError(w http.ResponseWriter, err error) {
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
-// The clientError helper sends a specific status code and corresponding description
-// to the user. We'll use this later in the book to send responses like 400 "Bad
-// Request" when there's a problem with the request that the user sent.
+// clientError writes a client error to the response writer.
+// The error code is passed as an argument.
 func (app *application) clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
 
-// For consistency, we'll also implement a notFound helper. This is simply a
-// convenience wrapper around clientError which sends a 404 Not Found response to
-// the user.
+// notFound writes a 404 Not Found error to the response writer.
 func (app *application) notFound(w http.ResponseWriter) {
 	app.clientError(w, http.StatusNotFound)
 }
 
+// render renders a template with the given data.
+// The template is looked up in the application's template cache.
+// If the template does not exist, a server error is returned.
 func (app *application) render(w http.ResponseWriter, status int, page string, data *templateData) {
-	// Retrieve the appropriate template set from the cache based on the page
-	// name (like 'home.html'). If no entry exists in the cache with the
-	// provided name, then create a new error and call the serverError() helper
-	// method that we made earlier and return.
 	ts, ok := app.templateCache[page]
 	if !ok {
 		err := fmt.Errorf("the template %s does not exist", page)
@@ -46,78 +42,74 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 		return
 	}
 
-	// Initialize a new buffer.
+	// Create a new buffer to store the rendered template.
 	buf := new(bytes.Buffer)
 
-	// Write the template to the buffer, instead of straight to the
-	// http.ResponseWriter. If there's an error, call our serverError() helper
-	// and then return.
+	// Execute the template, passing in the data.
 	err := ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
-	// If the template is written to the buffer without any errors, we are safe
-	// to go ahead and write the HTTP status code to http.ResponseWriter.
+	// Write the HTTP response header.
 	w.WriteHeader(status)
 
-	// Write the contents of the buffer to the http.ResponseWriter. Note: this
-	// is another time when we pass our http.ResponseWriter to a function that
-	// takes an io.Writer.
+	// Write the rendered template to the response writer.
 	_, err = buf.WriteTo(w)
 	if err != nil {
 		return
 	}
 }
 
+// newTemplateData creates a new template data object.
+// The object contains the current year, the flash message,
+// the user's authentication status, and the CSRF token.
 func (app *application) newTemplateData(r *http.Request) *templateData {
 	return &templateData{
 		CurrentYear:     time.Now().Year(),
 		Flash:           app.sessionManager.PopString(r.Context(), "flash"),
 		IsAuthenticated: app.isAuthenticated(r),
-		CSRFToken:       nosurf.Token(r), // Add the CSRF token.
+		CSRFToken:       nosurf.Token(r),
 	}
 }
 
-// Create a new decodePostForm() helper method. The second parameter here, dst,
-// is the target destination that we want to decode the form data into.
+// decodePostForm decodes the POST form data from the request into the given destination object.
+// The destination object must be a struct.
 func (app *application) decodePostForm(r *http.Request, dst any) error {
-	// Call ParseForm() on the request, in the same way that we did in our
-	// createSnippetPost handler.
+	// Parse the POST form data.
 	err := r.ParseForm()
 	if err != nil {
 		return err
 	}
 
-	// Call Decode() on our decoder instance, passing the target destination as
-	// the first parameter.
+	// Decode the POST form data into the destination object.
 	err = app.formDecoder.Decode(dst, r.PostForm)
 	if err != nil {
-		// If we try to use an invalid target destination, the Decode() method
-		// will return an error with the type *form.InvalidDecoderError.We use
-		// errors.As() to check for this and raise a panic rather than returning
-		// the error.
+		// If the error is a `form.InvalidDecoderError`, panic.
 		var invalidDecoderError *form.InvalidDecoderError
 
 		if errors.As(err, &invalidDecoderError) {
 			panic(err)
 		}
 
-		// For all other errors, we return them as normal.
 		return err
 	}
 
+	// Return nil to indicate success.
 	return nil
 }
 
-// Return true if the current request is from an authenticated user, otherwise
-// return false.
+// isAuthenticated returns whether the user is authenticated.
+// The authentication status is stored in the request context.
 func (app *application) isAuthenticated(r *http.Request) bool {
+	// Get the authentication status from the request context.
 	isAuthenticated, ok := r.Context().Value(isAuthenticatedContextKey).(bool)
 	if !ok {
+		// If the authentication status is not present in the request context, return false.
 		return false
 	}
 
+	// Return the authentication status.
 	return isAuthenticated
 }
