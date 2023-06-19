@@ -55,6 +55,8 @@ func (app *application) routes() http.Handler {
 	// The `snippetCreatePost` function is used to handle requests to post a snippet create form.
 	router.Handler(http.MethodPost, "/snippet/create", protected.ThenFunc(app.snippetCreatePost))
 
+	router.Handler(http.MethodGet, "/account/view", protected.ThenFunc(app.accountView))
+
 	// The `userLogoutPost` function is used to handle requests to logout of a user account.
 	router.Handler(http.MethodPost, "/user/logout", protected.ThenFunc(app.userLogoutPost))
 
