@@ -29,6 +29,8 @@ func (app *application) routes() http.Handler {
 	// The `home` function is used to handle requests to the home page.
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
 
+	router.Handler(http.MethodGet, "/about", dynamic.ThenFunc(app.about))
+
 	// The `snippetView` function is used to handle requests to view a snippet.
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
 

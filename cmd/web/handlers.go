@@ -294,6 +294,11 @@ func (app *application) userLogoutPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func (app *application) about(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	app.render(w, http.StatusOK, "about.html", data)
+}
+
 // ping returns an HTTP 200 OK response.
 func ping(w http.ResponseWriter, r *http.Request) {
 	// Write the "OK" string to the response.
