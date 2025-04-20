@@ -4,16 +4,18 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"flag"
-	"github.com/alexedwards/scs/mysqlstore"
-	"github.com/alexedwards/scs/v2"
-	"github.com/go-playground/form/v4"
-	_ "github.com/go-sql-driver/mysql"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"snippetbox/internal/models"
 	"time"
+
+	"github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // The application struct represents the application itself. It contains
@@ -37,8 +39,10 @@ type application struct {
 // HTTP server, and waits for the server to terminate.
 func main() {
 	// Parse the command-line flags.
-	addr := flag.String("addr", ":4000", "HTTP network address")
-	dsn := flag.String("dsn", "snippetbox_admin:snippetbox_admin_pass@/snippetbox?parseTime=true", "MySQL data source name")
+	addr := flag.String("addr", os.Getenv("APP_PORT"), "HTTP network address")
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
+
 	flag.Parse()
 
 	// Create a new logger.
@@ -46,7 +50,7 @@ func main() {
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// Open the database.
-	db, err := openDB(*dsn)
+	db, err := openDB(dsn)
 	if err != nil {
 		errorLog.Fatal(err)
 	}
