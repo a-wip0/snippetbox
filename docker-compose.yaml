@@ -1,0 +1,50 @@
+services:
+  app:
+    container_name: snippetbox-app
+    build: .
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_PORT: :4000
+      DB_HOST: snippetbox-db
+      DB_PORT: 3306
+      DB_USER: snippetbox_admin
+      DB_PASS: snippetbox_admin_pass
+      DB_NAME: snippetbox
+    volumes:
+      - ./tls:/app/tls:ro
+      - ./ui:/app/ui:ro
+    networks:
+      - backend
+    command: go run ./cmd/web
+
+  db:
+    container_name: snippetbox-db
+    image: mysql:9.3
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: snippetbox
+      MYSQL_USER: snippetbox_admin
+      MYSQL_PASSWORD: snippetbox_admin_pass
+    ports:
+      - "3847:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 2
+      start_period: 0s
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - backend
+
+volumes:
+  db_data:
+
+networks:
+  backend:
