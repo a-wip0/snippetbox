@@ -20,6 +20,7 @@ services:
     networks:
       - backend
     command: go run ./cmd/web
+    # command: go run ./cmd/web/ -debug
 
   db:
     container_name: snippetbox-db

@@ -22,6 +22,7 @@ import (
 // references to the various components that the application needs, such as
 // the logger, the database, the template cache, and the session manager.
 type application struct {
+	debug          bool
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       models.SnippetModelInterface
@@ -42,6 +43,8 @@ func main() {
 	addr := flag.String("addr", os.Getenv("APP_PORT"), "HTTP network address")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
+
+	debug := flag.Bool("debug", false, "Enable debug mode")
 
 	flag.Parse()
 
@@ -72,6 +75,7 @@ func main() {
 
 	// Create a new application instance.
 	app := &application{
+		debug:          *debug,
 		errorLog:       errorLog,
 		infoLog:        infoLog,
 		snippets:       &models.SnippetModel{DB: db},
