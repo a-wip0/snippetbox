@@ -1,7 +1,9 @@
 services:
   app-test:
     container_name: snippetbox-app-test
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.test
     ports:
       - "4000:4000"
     depends_on:
