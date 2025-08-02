@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/justinas/nosurf"
 	"net/http"
+
+	"github.com/justinas/nosurf"
 )
 
 // secureHeaders sets security headers on the response.
@@ -21,7 +22,7 @@ func secureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "origin-when-cross-origin")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "deny")
-		w.Header().Set("X-XSS-Protection", "1")
+		w.Header().Set("X-XSS-Protection", "0")
 
 		// Call the next handler in the chain.
 		next.ServeHTTP(w, r)
