@@ -362,7 +362,7 @@ func (app *application) accountPasswordUpdatePost(w http.ResponseWriter, r *http
 		data := app.newTemplateData(r)
 		data.Form = form
 
-		app.render(w, http.StatusUnprocessableEntity, "password.tmpl", data)
+		app.render(w, http.StatusUnprocessableEntity, "password.html", data)
 		return
 	}
 
@@ -376,7 +376,7 @@ func (app *application) accountPasswordUpdatePost(w http.ResponseWriter, r *http
 			data := app.newTemplateData(r)
 			data.Form = form
 
-			app.render(w, http.StatusUnprocessableEntity, "password.tmpl", data)
+			app.render(w, http.StatusUnprocessableEntity, "password.html", data)
 		} else if err != nil {
 			app.serverError(w, err)
 		}
