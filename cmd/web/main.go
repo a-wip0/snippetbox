@@ -39,14 +39,19 @@ type application struct {
 // session manager. Finally, it creates a new application instance, starts the
 // HTTP server, and waits for the server to terminate.
 func main() {
-	// Parse the command-line flags.
-	addr := flag.String("addr", os.Getenv("APP_PORT"), "HTTP network address")
-
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
-
+	// Command-line flags with fallbacks to environment variables
+	addr := flag.String("addr", getEnv("APP_PORT", ":4000"), "HTTP network address")
 	debug := flag.Bool("debug", false, "Enable debug mode")
-
 	flag.Parse()
+
+	// Create DSN for MySQL
+	dbUser := getEnv("DB_USER", "")
+	dbPass := getEnv("DB_PASS", "")
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT_CONTAINER", "3306")
+	dbName := getEnv("DB_NAME", "")
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPass, dbHost, dbPort, dbName)
 
 	// Create a new logger.
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -123,4 +128,12 @@ func openDB(dsn string) (*sql.DB, error) {
 
 	// Return the database connection.
 	return db, nil
+}
+
+// getEnv returns env value or fallback if empty
+func getEnv(key string, fallback string) string {
+	if val, ok := os.LookupEnv(key); ok && val != "" {
+		return val
+	}
+	return fallback
 }
