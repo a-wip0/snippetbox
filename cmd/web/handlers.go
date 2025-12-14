@@ -105,6 +105,13 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	form.CheckField(validator.NotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(validator.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
+	form.CheckField(validator.NotBlank(form.Content), "content", "This field cannot be blank")
+	// Use the generic PermittedValue() function instead of the type-specific
+	// PermittedInt() function.
+	form.CheckField(validator.PermittedValue(form.Expires, 1, 7, 365), "expires", "This field must equal 1, 7 or 365")
+
 	// Validate the form data.
 	if !form.Valid() {
 		// If the form data is not valid, render the create.tmpl template with the form data.
@@ -115,8 +122,10 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	userID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
 	// Insert the snippet into the database.
-	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires)
+	id, err := app.snippets.Insert(form.Title, form.Content, form.Expires, userID)
 	if err != nil {
 		// If there is an error inserting the snippet into the database, return a 500 Internal Server Error error.
 		app.serverError(w, err)

@@ -20,13 +20,13 @@ type SnippetModel struct {
 }
 
 // Insert a new snippet into the database.
-func (m *SnippetModel) Insert(title string, content string, expires int) (int, error) {
+func (m *SnippetModel) Insert(title string, content string, expires int, userID int) (int, error) {
 	// stmt is the SQL statement to be executed.
-	stmt := `INSERT INTO snippets (title, content, created, expires)
-	VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))`
+	stmt := `INSERT INTO snippets (title, content, created, expires, user_id)
+	VALUES(?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY), ?)`
 
 	// result is the result of executing the SQL statement.
-	result, err := m.DB.Exec(stmt, title, content, expires)
+	result, err := m.DB.Exec(stmt, title, content, expires, userID)
 	if err != nil {
 		// Error if there is an error executing the SQL statement.
 		return 0, err
@@ -120,7 +120,7 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 
 // SnippetModelInterface is an interface that defines the methods that can be used to interact with a SnippetModel.
 type SnippetModelInterface interface {
-	Insert(title string, content string, expires int) (int, error)
+	Insert(title string, content string, expires int, userID int) (int, error)
 	Get(id int) (*Snippet, error)
 	Latest() ([]*Snippet, error)
 }
