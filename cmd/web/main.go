@@ -16,6 +16,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 // The application struct represents the application itself. It contains
@@ -39,6 +40,10 @@ type application struct {
 // session manager. Finally, it creates a new application instance, starts the
 // HTTP server, and waits for the server to terminate.
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system env")
+	}
+
 	// Command-line flags with fallbacks to environment variables
 	addr := flag.String("addr", getEnv("APP_PORT", ":4000"), "HTTP network address")
 	debug := flag.Bool("debug", false, "Enable debug mode")
@@ -46,9 +51,10 @@ func main() {
 
 	// Create DSN for MySQL
 	dbUser := getEnv("DB_USER", "")
-	dbPass := getEnv("DB_PASS", "")
+	dbPass := getEnv("DB_PASSWORD", "")
 	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT_CONTAINER", "3306")
+	// CHANGE THIS LINE: Read the new 'DB_PORT' variable
+	dbPort := getEnv("DB_PORT", "3847")
 	dbName := getEnv("DB_NAME", "")
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", dbUser, dbPass, dbHost, dbPort, dbName)
