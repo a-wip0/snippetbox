@@ -7,6 +7,7 @@
             <tr>
                 <th>Title</th>
                 <th>Created</th>
+                <th>Expires In</th>
                 <th>ID</th>
             </tr>
             {{range .Snippets}}
@@ -14,6 +15,7 @@
                     <!-- Use the new clean URL style-->
                     <td><a href='/snippet/view/{{.ID}}'>{{.Title}}</a></td>
                     <td>{{humanDate .Created}}</td>
+                    <td>{{humanDate .Expires}}</td>
                     <td>#{{.ID}}</td>
                 </tr>
             {{end}}
