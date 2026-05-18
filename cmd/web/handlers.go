@@ -15,6 +15,12 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	// Get the authenticated user's ID from the session.
 	userID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
 
+	if userID == 0 {
+		// Redirect the user to the login page if they are not authenticated.
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		return
+	}
+
 	// Get the latest snippets from the database.
 	snippets, err := app.snippets.Latest(userID)
 	if err != nil {
@@ -34,6 +40,15 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
+	// Get the authenticated user's ID from the session.
+	userID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
+	if userID == 0 {
+		// Redirect the user to the login page if they are not authenticated.
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		return
+	}
+
 	// Get the snippet ID from the request URL.
 	params := httprouter.ParamsFromContext(r.Context())
 	id, err := strconv.Atoi(params.ByName("id"))
