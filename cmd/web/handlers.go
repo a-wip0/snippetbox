@@ -12,8 +12,11 @@ import (
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
+	// Get the authenticated user's ID from the session.
+	userID := app.sessionManager.GetInt(r.Context(), "authenticatedUserID")
+
 	// Get the latest snippets from the database.
-	snippets, err := app.snippets.Latest()
+	snippets, err := app.snippets.Latest(userID)
 	if err != nil {
 		// If there is an error, send a 500 error response.
 		app.serverError(w, err)

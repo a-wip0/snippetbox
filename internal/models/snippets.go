@@ -83,14 +83,16 @@ func (m *SnippetModel) Get(id int) (*SnippetGet, error) {
 }
 
 // Latest Gets the latest 10 snippets from the database.
-func (m *SnippetModel) Latest() ([]*SnippetLatest, error) {
+func (m *SnippetModel) Latest(user_id int) ([]*SnippetLatest, error) {
 
 	// stmt is the SQL statement to be executed.
-	stmt := `SELECT id, title, content, created, expires FROM snippets
-	WHERE expires > UTC_TIMESTAMP() ORDER BY id DESC LIMIT 10`
+	stmt := `SELECT id, title, content, created, expires
+	FROM snippets
+	WHERE expires > UTC_TIMESTAMP() and user_id = ?
+	ORDER BY id DESC LIMIT 10`
 
 	// rows is the result of executing the SQL statement.
-	rows, err := m.DB.Query(stmt)
+	rows, err := m.DB.Query(stmt, user_id)
 	if err != nil {
 		// Error if there is an error executing the SQL statement.
 		return nil, err
@@ -133,5 +135,5 @@ func (m *SnippetModel) Latest() ([]*SnippetLatest, error) {
 type SnippetModelInterface interface {
 	Get(id int) (*SnippetGet, error)
 	Insert(title string, content string, expires int, userID int) (int, error)
-	Latest() ([]*SnippetLatest, error)
+	Latest(user_id int) ([]*SnippetLatest, error)
 }
