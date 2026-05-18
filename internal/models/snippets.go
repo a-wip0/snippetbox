@@ -53,30 +53,32 @@ func (m *SnippetModel) Insert(title string, content string, expires int, userID 
 }
 
 // Get a snippet from the database by its ID.
-func (m *SnippetModel) Get(id int) (*Snippet, error) {
+func (m *SnippetModel) Get(id int) (*SnippetGet, error) {
 	// stmt is the SQL statement to be executed.
-	stmt := `SELECT id, title, content, created, expires FROM snippets
-	WHERE expires > UTC_TIMESTAMP() AND id = ?`
+	stmt := `SELECT snippets.id, snippets.title, snippets.content, snippets.created, snippets.expires, users.name
+	FROM snippets
+	INNER JOIN users ON snippets.user_id = users.id
+	WHERE snippets.expires > UTC_TIMESTAMP() AND snippets.id = ?`
 
 	// row is the result of executing the SQL statement.
 	row := m.DB.QueryRow(stmt, id)
 
-	// s is a new Snippet struct.
-	s := &Snippet{}
+	// s is a new SnippetGet struct.
+	s := &SnippetGet{}
 
-	// err is the error of scanning the row into the Snippet struct.
-	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
+	// err is the error of scanning the row into the SnippetGet struct.
+	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires, &s.UserName)
 	if err != nil {
 		// If the error is sql.ErrNoRows, then there is no snippet with the specified ID.
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord
 		} else {
-			// Otherwise, there was an error scanning the row into the Snippet struct.
+			// Otherwise, there was an error scanning the row into the SnippetGet struct.
 			return nil, err
 		}
 	}
 
-	// Return the Snippet struct.
+	// Return the SnippetGet struct.
 	return s, nil
 }
 
@@ -129,6 +131,7 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 
 // SnippetModelInterface is an interface that defines the methods that can be used to interact with a SnippetModel.
 type SnippetModelInterface interface {
+	Get(id int) (*SnippetGet, error)
 	Insert(title string, content string, expires int, userID int) (int, error)
 	Get(id int) (*Snippet, error)
 	Latest() ([]*Snippet, error)
