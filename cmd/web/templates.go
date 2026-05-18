@@ -11,6 +11,7 @@ import (
 
 // `templateData` struct contains all the data that will be passed to the template.
 type templateData struct {
+	Snippet         *models.SnippetGet
 	CurrentYear     int
 	Snippet         *models.Snippet
 	Snippets        []*models.Snippet

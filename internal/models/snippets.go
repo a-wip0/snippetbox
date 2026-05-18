@@ -6,12 +6,21 @@ import (
 	"time"
 )
 
-type Snippet struct {
+type SnippetLatest struct {
 	ID      int
 	Title   string
 	Content string
 	Created time.Time
 	Expires time.Time
+}
+
+type SnippetGet struct {
+	ID       int
+	Title    string
+	Content  string
+	Created  time.Time
+	Expires  time.Time
+	UserName string
 }
 
 type SnippetModel struct {
