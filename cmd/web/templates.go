@@ -13,8 +13,7 @@ import (
 type templateData struct {
 	Snippet         *models.SnippetGet
 	CurrentYear     int
-	Snippet         *models.Snippet
-	Snippets        []*models.Snippet
+	Snippets        []*models.SnippetLatest
 	Form            any
 	Flash           string
 	IsAuthenticated bool

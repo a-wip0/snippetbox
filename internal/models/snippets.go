@@ -83,7 +83,7 @@ func (m *SnippetModel) Get(id int) (*SnippetGet, error) {
 }
 
 // Latest Gets the latest 10 snippets from the database.
-func (m *SnippetModel) Latest() ([]*Snippet, error) {
+func (m *SnippetModel) Latest() ([]*SnippetLatest, error) {
 
 	// stmt is the SQL statement to be executed.
 	stmt := `SELECT id, title, content, created, expires FROM snippets
@@ -106,15 +106,15 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 		}
 	}(rows)
 
-	// snippets is a slice of Snippet structs.
-	snippets := []*Snippet{}
+	// snippets is a slice of SnippetLatest structs.
+	snippets := []*SnippetLatest{}
 
-	// For each row in the result set, create a new Snippet struct and append it to the snippets slice.
+	// For each row in the result set, create a new SnippetLatest struct and append it to the snippets slice.
 	for rows.Next() {
-		s := &Snippet{}
+		s := &SnippetLatest{}
 		err := rows.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
 		if err != nil {
-			// Error if there is an error scanning the row into the Snippet struct.
+			// Error if there is an error scanning the row into the SnippetLatest struct.
 			return nil, err
 		}
 		snippets = append(snippets, s)
@@ -133,6 +133,5 @@ func (m *SnippetModel) Latest() ([]*Snippet, error) {
 type SnippetModelInterface interface {
 	Get(id int) (*SnippetGet, error)
 	Insert(title string, content string, expires int, userID int) (int, error)
-	Get(id int) (*Snippet, error)
-	Latest() ([]*Snippet, error)
+	Latest() ([]*SnippetLatest, error)
 }
