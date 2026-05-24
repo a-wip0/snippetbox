@@ -14,7 +14,7 @@ func (app *application) routes() http.Handler {
 
 	// The `NotFound` function is called when a request is made to a route that does not exist.
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		app.notFound(w)
+		app.notFound(w, r)
 	})
 
 	// The `fileServer` variable is used to serve static files.

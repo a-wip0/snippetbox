@@ -54,7 +54,7 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(params.ByName("id"))
 	if err != nil || id < 1 {
 		// If the ID is invalid, send a 404 error response.
-		app.notFound(w)
+		app.notFound(w, r)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, models.ErrNoRecord) {
 			// If it is, send a 404 error response.
 			// TODO: Create New View For Not Found
-			app.notFound(w)
+			app.notFound(w, r)
 		} else {
 			// If it is not, send a 500 error response.
 			app.serverError(w, err)
