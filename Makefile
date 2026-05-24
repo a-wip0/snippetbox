@@ -3,7 +3,7 @@ export
 
 MIGRATIONS_DIR=./db/migrations
 MIGRATE=migrate
-DB_URL=mysql://$(DB_USER):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT_HOST))/$(DB_NAME)
+DB_URL=mysql://$(DB_USER):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT))/$(DB_NAME)
 
 .PHONY: migrate-up migrate-down migrate-force migrate-create migrate-install
 
