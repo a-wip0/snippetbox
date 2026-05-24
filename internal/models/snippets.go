@@ -53,15 +53,15 @@ func (m *SnippetModel) Insert(title string, content string, expires int, userID 
 }
 
 // Get a snippet from the database by its ID.
-func (m *SnippetModel) Get(id int) (*SnippetGet, error) {
+func (m *SnippetModel) Get(id int, user_id int) (*SnippetGet, error) {
 	// stmt is the SQL statement to be executed.
 	stmt := `SELECT snippets.id, snippets.title, snippets.content, snippets.created, snippets.expires, users.name
 	FROM snippets
 	INNER JOIN users ON snippets.user_id = users.id
-	WHERE snippets.expires > UTC_TIMESTAMP() AND snippets.id = ?`
+	WHERE snippets.expires > UTC_TIMESTAMP() AND snippets.id = ? AND user_id = ?`
 
 	// row is the result of executing the SQL statement.
-	row := m.DB.QueryRow(stmt, id)
+	row := m.DB.QueryRow(stmt, id, user_id)
 
 	// s is a new SnippetGet struct.
 	s := &SnippetGet{}
@@ -133,7 +133,7 @@ func (m *SnippetModel) Latest(user_id int) ([]*SnippetLatest, error) {
 
 // SnippetModelInterface is an interface that defines the methods that can be used to interact with a SnippetModel.
 type SnippetModelInterface interface {
-	Get(id int) (*SnippetGet, error)
+	Get(id int, user_id int) (*SnippetGet, error)
 	Insert(title string, content string, expires int, userID int) (int, error)
 	Latest(user_id int) ([]*SnippetLatest, error)
 }

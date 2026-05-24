@@ -33,8 +33,8 @@ func (app *application) clientError(w http.ResponseWriter, status int) {
 }
 
 // notFound writes a 404 Not Found error to the response writer.
-func (app *application) notFound(w http.ResponseWriter) {
-	app.clientError(w, http.StatusNotFound)
+func (app *application) notFound(w http.ResponseWriter, r *http.Request) {
+	app.render(w, http.StatusNotFound, "notfound.html", app.newTemplateData(r))
 }
 
 // render renders a template with the given data.

@@ -59,11 +59,12 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the snippet from the database.
-	snippet, err := app.snippets.Get(id)
+	snippet, err := app.snippets.Get(id, userID)
 	if err != nil {
 		// If there is an error, check if it is a no record error.
 		if errors.Is(err, models.ErrNoRecord) {
 			// If it is, send a 404 error response.
+			// TODO: Create New View For Not Found
 			app.notFound(w)
 		} else {
 			// If it is not, send a 500 error response.
