@@ -5,13 +5,21 @@ import (
 	"time"
 )
 
-var mockSnippet = &models.Snippet{
+var mockSnippetGet = &models.SnippetGet{
 	ID:       1,
 	Title:    "An old silent pond",
 	Content:  "An old silent pond...",
 	Created:  time.Now(),
 	Expires:  time.Now(),
 	UserName: "Alice Jones",
+}
+
+var mockSnippetLatest = &models.SnippetLatest{
+	ID:      1,
+	Title:   "An old silent pond",
+	Content: "An old silent pond...",
+	Created: time.Now(),
+	Expires: time.Now(),
 }
 
 type SnippetModel struct{}
@@ -23,12 +31,12 @@ func (m *SnippetModel) Insert(title string, content string, expires int, userID 
 func (m *SnippetModel) Get(id int) (*models.SnippetGet, error) {
 	switch id {
 	case 1:
-		return mockSnippet, nil
+		return mockSnippetGet, nil
 	default:
 		return nil, models.ErrNoRecord
 	}
 }
 
 func (m *SnippetModel) Latest(user_id int) ([]*models.SnippetLatest, error) {
-	return []*models.SnippetLatest{mockSnippet}, nil
+	return []*models.SnippetLatest{mockSnippetLatest}, nil
 }
