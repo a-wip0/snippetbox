@@ -1,8 +1,6 @@
 module snippetbox
 
-go 1.23.0
-
-toolchain go1.23.8
+go 1.25
 
 require (
 	github.com/alexedwards/scs/mysqlstore v0.0.0-20250417082927-ab20b3feb5e9
@@ -12,7 +10,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/justinas/alice v1.2.0
 	github.com/justinas/nosurf v1.1.1
-	golang.org/x/crypto v0.37.0
+	golang.org/x/crypto v0.41.0
 )
 
 require (
