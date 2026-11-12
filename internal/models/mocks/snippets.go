@@ -28,7 +28,7 @@ func (m *SnippetModel) Insert(title string, content string, expires int, userID 
 	return 2, nil
 }
 
-func (m *SnippetModel) Get(id int) (*models.SnippetGet, error) {
+func (m *SnippetModel) Get(id int, user_id int) (*models.SnippetGet, error) {
 	switch id {
 	case 1:
 		return mockSnippetGet, nil

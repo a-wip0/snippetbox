@@ -9,3 +9,5 @@ it will use port 4000 as default port
 check more info with command
 
 `go run ./cmd/web -help`
+
+- Aditya Wibowo Purnomo
